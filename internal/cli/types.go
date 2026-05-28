@@ -17,8 +17,8 @@ type appConfig struct {
 }
 
 func resolveProject(cfg appConfig, allowUninit bool) (string, string, registry.Entry, error) {
-	name, entry, ok := registry.ResolveTarget(cfg.Target, cfg.Cwd)
-	if ok {
+	name, entry, err := registry.ResolveTarget(cfg.Target, cfg.Cwd)
+	if err == nil {
 		return config.Abs(entry.Root), name, entry, nil
 	}
 	if allowUninit {
@@ -28,7 +28,7 @@ func resolveProject(cfg appConfig, allowUninit bool) (string, string, registry.E
 		}
 		return config.Abs(root), "", registry.Entry{}, nil
 	}
-	return "", "", registry.Entry{}, fmt.Errorf("未在 registry 中找到目标: %s\n提示: 先运行 `codegraph init`，或用 `codegraph --target <name> ...` 指定已注册项目。", firstNonEmpty(cfg.Target, cfg.Cwd))
+	return "", "", registry.Entry{}, fmt.Errorf("未在 registry 中找到目标: %s\n原因: %v\n提示: 先运行 `codegraph init`，或用 `codegraph --target <name> ...` 指定已注册项目。", firstNonEmpty(cfg.Target, cfg.Cwd), err)
 }
 
 func firstNonEmpty(a, b string) string {

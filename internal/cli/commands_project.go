@@ -2,11 +2,6 @@ package cli
 
 import (
 	"bufio"
-	"github.com/DreamCats/codegraph-cli/internal/config"
-	"github.com/DreamCats/codegraph-cli/internal/indexer"
-	"github.com/DreamCats/codegraph-cli/internal/model"
-	"github.com/DreamCats/codegraph-cli/internal/registry"
-	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -14,6 +9,12 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/DreamCats/codegraph-cli/internal/config"
+	"github.com/DreamCats/codegraph-cli/internal/indexer"
+	"github.com/DreamCats/codegraph-cli/internal/model"
+	"github.com/DreamCats/codegraph-cli/internal/registry"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 )
 
 func cmdInit(cfg appConfig, args []string) error {
@@ -60,8 +61,7 @@ func cmdInit(cfg appConfig, args []string) error {
 	db.Close()
 	regName := *name
 	if regName == "" {
-		parts := strings.Split(strings.Trim(key, "/"), "/")
-		regName = parts[len(parts)-1]
+		regName = registry.DefaultNameForEntry(key, root)
 	}
 	remote := config.GitRemote(root)
 	if err := registry.Upsert(regName, registry.Entry{Key: key, Root: root, Remote: remote}); err != nil {
@@ -112,10 +112,10 @@ func cmdIndex(cfg appConfig, args []string) error {
 	_ = quiet
 	var name string
 	var entry registry.Entry
-	var ok bool
 	if *pathOpt != "" {
-		name, entry, ok = registry.ResolveTarget(config.Abs(*pathOpt), cfg.Cwd)
-		if !ok {
+		var err error
+		name, entry, err = registry.ResolveTarget(config.Abs(*pathOpt), cfg.Cwd)
+		if err != nil {
 			return fmt.Errorf("未在 registry 中找到路径: %s\n提示: 先运行 `codegraph init --path %s`。", config.Abs(*pathOpt), config.Abs(*pathOpt))
 		}
 	} else {

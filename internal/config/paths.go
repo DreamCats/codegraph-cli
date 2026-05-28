@@ -57,7 +57,7 @@ func GitRemote(root string) *string {
 
 var unsafeKeyRE = regexp.MustCompile(`[^A-Za-z0-9._/-]`)
 
-func normalizeRemote(url string) string {
+func NormalizeRemote(url string) string {
 	url = strings.TrimSpace(url)
 	url = strings.TrimSuffix(strings.TrimSuffix(url, "/"), ".git")
 	if m := regexp.MustCompile(`^[^@]+@([^:]+):(.+)$`).FindStringSubmatch(url); m != nil {
@@ -82,7 +82,7 @@ func DeriveProjectKey(root, name string) string {
 		return safeKey(name)
 	}
 	if remote := GitRemote(root); remote != nil {
-		return safeKey(normalizeRemote(*remote))
+		return safeKey(NormalizeRemote(*remote))
 	}
 	h := sha1.Sum([]byte(Abs(root)))
 	return "local/" + filepath.Base(root) + "-" + hex.EncodeToString(h[:])[:12]
