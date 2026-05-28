@@ -24,8 +24,8 @@ codegraph index --path /path/to/project --quiet
 Prefer JSON for agent workflows:
 
 ```bash
-codegraph --json -C /path/to/project query Service
-codegraph --json -C /path/to/project context "fix login bug"
+codegraph --json --target /path/to/project query Service
+codegraph --json --target /path/to/project context "fix login bug"
 ```
 
 If JSON contains `stale.is_stale=true`, run `stale.command`, then retry the original query.

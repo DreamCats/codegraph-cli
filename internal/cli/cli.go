@@ -1,12 +1,13 @@
 package cli
 
 import (
-	"github.com/DreamCats/codegraph-cli/internal/model"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/DreamCats/codegraph-cli/internal/model"
 )
 
 func Run(args []string) error {
@@ -52,14 +53,12 @@ func parseGlobal(args []string) (appConfig, []string, error) {
 			cfg.JSON = true
 		case a == "--verbose":
 			cfg.Verbose = true
-		case a == "-C" || a == "--target":
+		case a == "--target":
 			if i+1 >= len(args) {
 				return cfg, nil, fmt.Errorf("%s requires value", a)
 			}
 			i++
 			cfg.Target = args[i]
-		case strings.HasPrefix(a, "-C="):
-			cfg.Target = strings.TrimPrefix(a, "-C=")
 		case strings.HasPrefix(a, "--target="):
 			cfg.Target = strings.TrimPrefix(a, "--target=")
 		default:
@@ -123,7 +122,7 @@ func printTopHelp() {
 	fmt.Println(`Usage: codegraph [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  -C, --target NAME|PATH  选择已注册项目（registry 中的 name 或路径）
+      --target NAME|PATH  选择已注册项目（registry 中的 name 或路径）
       --json              JSON 格式输出
       --verbose           显示完整错误栈
   -h, --help              Show help

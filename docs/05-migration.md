@@ -8,7 +8,7 @@ This Go rewrite targets feature parity with the Python reference implementation 
 |---|---|
 | Central storage and registry | done |
 | CLI command names | done |
-| Global `-C/--target`, `--json`, `--verbose` | done |
+| Global `--target`, `--json`, `--verbose` | done |
 | Incremental indexing and deleted-file cleanup | done |
 | `.gitignore`, default ignores, 1MB limit, `errors.log` | done |
 | Python / TS / JS / Go extraction | done |

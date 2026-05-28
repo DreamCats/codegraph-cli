@@ -53,7 +53,7 @@ func TestInitIndexQueryAndStale(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		if err := Run([]string{"--json", "-C", project, "query", "helper"}); err != nil {
+		if err := Run([]string{"--json", "--target", project, "query", "helper"}); err != nil {
 			t.Fatal(err)
 		}
 	})

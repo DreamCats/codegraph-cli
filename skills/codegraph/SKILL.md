@@ -20,8 +20,8 @@ codegraph index --path /path/to/project --force
 ```bash
 codegraph list
 codegraph info
-codegraph -C foo query MyClass
-codegraph -C /path/to/project status
+codegraph --target foo query MyClass
+codegraph --target /path/to/project status
 ```
 
 ## Queries
