@@ -2,11 +2,11 @@ package cli
 
 import (
 	"bufio"
-	"codegraph-cli/internal/config"
-	"codegraph-cli/internal/indexer"
-	"codegraph-cli/internal/model"
-	"codegraph-cli/internal/registry"
-	storepkg "codegraph-cli/internal/store"
+	"github.com/DreamCats/codegraph-cli/internal/config"
+	"github.com/DreamCats/codegraph-cli/internal/indexer"
+	"github.com/DreamCats/codegraph-cli/internal/model"
+	"github.com/DreamCats/codegraph-cli/internal/registry"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"errors"
 	"fmt"
 	"io/fs"

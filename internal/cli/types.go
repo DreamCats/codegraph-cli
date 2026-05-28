@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"codegraph-cli/internal/config"
-	"codegraph-cli/internal/registry"
+	"github.com/DreamCats/codegraph-cli/internal/config"
+	"github.com/DreamCats/codegraph-cli/internal/registry"
 	"fmt"
 )
 

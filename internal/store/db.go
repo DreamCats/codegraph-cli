@@ -1,7 +1,7 @@
 package store
 
 import (
-	"codegraph-cli/internal/model"
+	"github.com/DreamCats/codegraph-cli/internal/model"
 	"database/sql"
 	"os"
 	"path/filepath"

@@ -1,11 +1,11 @@
 package indexer
 
 import (
-	"codegraph-cli/internal/config"
-	"codegraph-cli/internal/extract"
-	"codegraph-cli/internal/model"
-	"codegraph-cli/internal/resolver"
-	storepkg "codegraph-cli/internal/store"
+	"github.com/DreamCats/codegraph-cli/internal/config"
+	"github.com/DreamCats/codegraph-cli/internal/extract"
+	"github.com/DreamCats/codegraph-cli/internal/model"
+	"github.com/DreamCats/codegraph-cli/internal/resolver"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"crypto/sha1"
 	"database/sql"
 	"encoding/hex"

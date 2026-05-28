@@ -2,9 +2,9 @@ package cli
 
 import (
 	"bufio"
-	"codegraph-cli/internal/config"
-	graphpkg "codegraph-cli/internal/graph"
-	"codegraph-cli/internal/resolver"
+	"github.com/DreamCats/codegraph-cli/internal/config"
+	graphpkg "github.com/DreamCats/codegraph-cli/internal/graph"
+	"github.com/DreamCats/codegraph-cli/internal/resolver"
 	"errors"
 	"fmt"
 	"os"

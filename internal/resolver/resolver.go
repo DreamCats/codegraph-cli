@@ -2,9 +2,9 @@ package resolver
 
 import (
 	"bufio"
-	"codegraph-cli/internal/extract"
-	"codegraph-cli/internal/model"
-	storepkg "codegraph-cli/internal/store"
+	"github.com/DreamCats/codegraph-cli/internal/extract"
+	"github.com/DreamCats/codegraph-cli/internal/model"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"database/sql"
 	"encoding/json"
 	"os"

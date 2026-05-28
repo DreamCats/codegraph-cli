@@ -1,6 +1,6 @@
 package extract
 
-import "codegraph-cli/internal/model"
+import "github.com/DreamCats/codegraph-cli/internal/model"
 
 func ExtractFile(path string, source []byte) model.ExtractResult {
 	switch DetectLanguage(path) {

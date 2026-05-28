@@ -1,8 +1,8 @@
 package graph
 
 import (
-	"codegraph-cli/internal/indexer"
-	storepkg "codegraph-cli/internal/store"
+	"github.com/DreamCats/codegraph-cli/internal/indexer"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"database/sql"
 	"os"
 	"path/filepath"

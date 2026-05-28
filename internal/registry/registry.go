@@ -1,7 +1,7 @@
 package registry
 
 import (
-	"codegraph-cli/internal/config"
+	"github.com/DreamCats/codegraph-cli/internal/config"
 	"encoding/json"
 	"os"
 	"path/filepath"

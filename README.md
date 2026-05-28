@@ -22,9 +22,13 @@ Supported languages: Python, TypeScript, TSX, JavaScript, JSX, Go.
 
 ## Quick Start
 
-```bash
-go install ./cmd/codegraph
+Install the latest version:
 
+```bash
+go install github.com/DreamCats/codegraph-cli/cmd/codegraph@latest
+```
+
+```bash
 cd /path/to/project
 codegraph init --index
 codegraph status

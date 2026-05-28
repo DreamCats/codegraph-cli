@@ -1,7 +1,7 @@
 package extract_test
 
 import (
-	"codegraph-cli/internal/extract"
+	"github.com/DreamCats/codegraph-cli/internal/extract"
 	"testing"
 )
 

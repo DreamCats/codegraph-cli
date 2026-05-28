@@ -1,8 +1,8 @@
 package graph
 
 import (
-	"codegraph-cli/internal/resolver"
-	storepkg "codegraph-cli/internal/store"
+	"github.com/DreamCats/codegraph-cli/internal/resolver"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"database/sql"
 	"fmt"
 	"os"

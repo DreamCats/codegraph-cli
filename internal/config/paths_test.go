@@ -1,7 +1,7 @@
 package config_test
 
 import (
-	"codegraph-cli/internal/config"
+	"github.com/DreamCats/codegraph-cli/internal/config"
 	"strings"
 	"testing"
 )

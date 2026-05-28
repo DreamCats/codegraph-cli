@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"codegraph-cli/internal/model"
+	"github.com/DreamCats/codegraph-cli/internal/model"
 	"encoding/json"
 	"flag"
 	"fmt"

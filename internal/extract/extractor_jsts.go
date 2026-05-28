@@ -1,7 +1,7 @@
 package extract
 
 import (
-	"codegraph-cli/internal/model"
+	"github.com/DreamCats/codegraph-cli/internal/model"
 	"regexp"
 	"sort"
 	"strings"

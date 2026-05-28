@@ -1,8 +1,8 @@
 package resolver_test
 
 import (
-	"codegraph-cli/internal/indexer"
-	"codegraph-cli/internal/resolver"
+	"github.com/DreamCats/codegraph-cli/internal/indexer"
+	"github.com/DreamCats/codegraph-cli/internal/resolver"
 	"os"
 	"path/filepath"
 	"testing"

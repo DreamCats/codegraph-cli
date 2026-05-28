@@ -1,7 +1,7 @@
 package main
 
 import (
-	"codegraph-cli/internal/cli"
+	"github.com/DreamCats/codegraph-cli/internal/cli"
 	"os"
 )
 

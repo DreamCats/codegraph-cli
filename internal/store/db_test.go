@@ -1,7 +1,7 @@
 package store_test
 
 import (
-	storepkg "codegraph-cli/internal/store"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"database/sql"
 	"testing"
 

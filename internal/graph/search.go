@@ -1,7 +1,7 @@
 package graph
 
 import (
-	storepkg "codegraph-cli/internal/store"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"database/sql"
 	"fmt"
 	"path/filepath"

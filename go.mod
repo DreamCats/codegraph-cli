@@ -1,4 +1,4 @@
-module codegraph-cli
+module github.com/DreamCats/codegraph-cli
 
 go 1.22
 

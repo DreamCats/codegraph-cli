@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"codegraph-cli/internal/config"
-	graphpkg "codegraph-cli/internal/graph"
+	"github.com/DreamCats/codegraph-cli/internal/config"
+	graphpkg "github.com/DreamCats/codegraph-cli/internal/graph"
 	"fmt"
 	"strings"
 )

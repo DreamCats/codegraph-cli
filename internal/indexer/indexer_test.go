@@ -1,8 +1,8 @@
 package indexer_test
 
 import (
-	"codegraph-cli/internal/graph"
-	"codegraph-cli/internal/indexer"
+	"github.com/DreamCats/codegraph-cli/internal/graph"
+	"github.com/DreamCats/codegraph-cli/internal/indexer"
 	"os"
 	"path/filepath"
 	"strings"
