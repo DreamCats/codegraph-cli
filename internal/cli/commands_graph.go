@@ -2,20 +2,27 @@ package cli
 
 import (
 	"bufio"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/DreamCats/codegraph-cli/internal/config"
 	graphpkg "github.com/DreamCats/codegraph-cli/internal/graph"
 	"github.com/DreamCats/codegraph-cli/internal/resolver"
-	"errors"
-	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
 func cmdResolve(cfg appConfig, args []string) error {
-	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help") {
-		fmt.Print(commandHelp("resolve"))
+	fs := newFlagSet("resolve")
+	pathOpt := fs.String("path", "", "project path")
+	if parseHelp(fs, args) {
 		return nil
 	}
+	if err := parseFlagArgs(fs, args); err != nil {
+		return err
+	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	_, name, entry, err := resolveProject(cfg, false)
 	if err != nil {
 		return err
@@ -30,6 +37,7 @@ func cmdResolve(cfg appConfig, args []string) error {
 
 func cmdCallers(cfg appConfig, args []string) error {
 	fs := newFlagSet("callers")
+	pathOpt := fs.String("path", "", "project path")
 	limit := fs.Int("limit", 20, "limit")
 	if parseHelp(fs, args) {
 		return nil
@@ -40,11 +48,13 @@ func cmdCallers(cfg appConfig, args []string) error {
 	if fs.NArg() < 1 {
 		return errors.New("missing symbol")
 	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	return callersOrCallees(cfg, fs.Arg(0), *limit, true)
 }
 
 func cmdCallees(cfg appConfig, args []string) error {
 	fs := newFlagSet("callees")
+	pathOpt := fs.String("path", "", "project path")
 	limit := fs.Int("limit", 20, "limit")
 	if parseHelp(fs, args) {
 		return nil
@@ -55,6 +65,7 @@ func cmdCallees(cfg appConfig, args []string) error {
 	if fs.NArg() < 1 {
 		return errors.New("missing symbol")
 	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	return callersOrCallees(cfg, fs.Arg(0), *limit, false)
 }
 
@@ -119,6 +130,7 @@ func callersOrCallees(cfg appConfig, symbol string, limit int, callers bool) err
 
 func cmdImpact(cfg appConfig, args []string) error {
 	fs := newFlagSet("impact")
+	pathOpt := fs.String("path", "", "project path")
 	depth := fs.Int("depth", 2, "depth")
 	limit := fs.Int("limit", 100, "limit")
 	if parseHelp(fs, args) {
@@ -130,6 +142,7 @@ func cmdImpact(cfg appConfig, args []string) error {
 	if fs.NArg() < 1 {
 		return errors.New("missing symbol")
 	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	root, name, entry, err := resolveProject(cfg, false)
 	if err != nil {
 		return err
@@ -155,6 +168,7 @@ func cmdImpact(cfg appConfig, args []string) error {
 
 func cmdAffected(cfg appConfig, args []string) error {
 	fs := newFlagSet("affected")
+	pathOpt := fs.String("path", "", "project path")
 	depth := fs.Int("depth", 5, "depth")
 	testFilter := fs.String("filter", "", "test regex")
 	fs.StringVar(testFilter, "test-filter", "", "test regex")
@@ -175,6 +189,7 @@ func cmdAffected(cfg appConfig, args []string) error {
 			}
 		}
 	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	root, name, entry, err := resolveProject(cfg, false)
 	if err != nil {
 		return err
@@ -210,9 +225,13 @@ func cmdAffected(cfg appConfig, args []string) error {
 
 func cmdContext(cfg appConfig, args []string) error {
 	fs := newFlagSet("context")
+	pathOpt := fs.String("path", "", "project path")
 	maxNodes := fs.Int("max-nodes", 20, "max nodes")
 	maxCode := fs.Int("max-code", 8, "max code blocks")
+	maxJSONBytes := fs.Int("max-json-bytes", 60000, "compact JSON output above this size; 0 disables")
 	noCode := fs.Bool("no-code", false, "omit source snippets")
+	summary := fs.Bool("summary", false, "compact project context")
+	allowLarge := fs.Bool("allow-large", false, "allow large JSON output")
 	legacyLimit := fs.Int("limit", 0, "legacy max nodes")
 	if parseHelp(fs, args) {
 		return nil
@@ -226,21 +245,69 @@ func cmdContext(cfg appConfig, args []string) error {
 	if *legacyLimit > 0 {
 		*maxNodes = *legacyLimit
 	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	task := strings.Join(fs.Args(), " ")
 	root, name, entry, err := resolveProject(cfg, false)
 	if err != nil {
 		return err
 	}
 	store := config.StoreDirFor(entry.Key)
-	payload, err := graphpkg.BuildContext(root, store, task, *maxNodes, *maxCode, !*noCode)
+	payload, err := graphpkg.BuildContext(root, store, task, *maxNodes, *maxCode, !*noCode && !*summary)
 	if err != nil {
 		return err
 	}
+	if *summary {
+		payload = graphpkg.CompactContext(payload)
+	}
 	payload["project"] = name
 	stale := graphpkg.AttachStale(payload, root, store)
+	if cfg.JSON && !*summary {
+		payload = protectLargeContextPayload(payload, task, root, *maxJSONBytes, *allowLarge)
+	}
 	if cfg.JSON {
 		return emit(cfg, payload, "")
 	}
+	if *summary {
+		fmt.Print(graphpkg.FormatContextSummaryMarkdown(payload) + staleHintText(stale))
+		return nil
+	}
 	fmt.Print(graphpkg.FormatContextMarkdown(payload) + staleHintText(stale))
 	return nil
+}
+
+func protectLargeContextPayload(payload map[string]any, task, root string, maxBytes int, allowLarge bool) map[string]any {
+	if allowLarge || maxBytes <= 0 {
+		return payload
+	}
+	size, ok := jsonSize(payload)
+	if !ok || size <= maxBytes {
+		return payload
+	}
+	compact := graphpkg.CompactContext(payload)
+	for _, key := range []string{"project", "stale"} {
+		if v, ok := payload[key]; ok {
+			compact[key] = v
+		}
+	}
+	compact["truncated"] = true
+	compact["output"] = map[string]any{
+		"truncated":        true,
+		"reason":           "json payload exceeded max_json_bytes",
+		"estimated_bytes":  size,
+		"max_json_bytes":   maxBytes,
+		"summary_command":  "codegraph --json context " + strconv.Quote(task) + " --path " + strconv.Quote(root) + " --summary",
+		"full_command":     "codegraph --json context " + strconv.Quote(task) + " --path " + strconv.Quote(root) + " --allow-large",
+		"no_code_command":  "codegraph --json context " + strconv.Quote(task) + " --path " + strconv.Quote(root) + " --no-code",
+		"compact_payload":  true,
+		"preserved_fields": []string{"task", "entrypoints", "related", "relationships", "project", "stale"},
+	}
+	return compact
+}
+
+func jsonSize(payload any) (int, bool) {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return 0, false
+	}
+	return len(raw), true
 }

@@ -1,10 +1,10 @@
 package graph
 
 import (
-	"github.com/DreamCats/codegraph-cli/internal/resolver"
-	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"database/sql"
 	"fmt"
+	"github.com/DreamCats/codegraph-cli/internal/resolver"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -233,6 +233,106 @@ func FormatContextMarkdown(payload map[string]any) string {
 				"",
 			)
 		}
+	}
+	return strings.TrimRight(strings.Join(lines, "\n"), "\n") + "\n"
+}
+
+func CompactContext(payload map[string]any) map[string]any {
+	out := map[string]any{"task": payload["task"]}
+	if v, ok := payload["entrypoints"].([]map[string]any); ok {
+		out["entrypoints"] = compactNodes(v, 8)
+		out["entrypoints_count"] = len(v)
+	}
+	if v, ok := payload["related"].([]map[string]any); ok {
+		out["related"] = compactNodes(v, 8)
+		out["related_count"] = len(v)
+	}
+	if v, ok := payload["relationships"].([]map[string]any); ok {
+		out["relationships"] = compactRelationships(v, 12)
+		out["relationships_count"] = len(v)
+	}
+	out["truncated"] = truncatedContext(out)
+	return out
+}
+
+func compactNodes(nodes []map[string]any, limit int) []map[string]any {
+	if len(nodes) > limit {
+		nodes = nodes[:limit]
+	}
+	out := make([]map[string]any, 0, len(nodes))
+	for _, n := range nodes {
+		out = append(out, map[string]any{
+			"qualified_name": n["qualified_name"],
+			"kind":           n["kind"],
+			"file_path":      n["file_path"],
+			"start_line":     n["start_line"],
+		})
+	}
+	return out
+}
+
+func compactRelationships(edges []map[string]any, limit int) []map[string]any {
+	if len(edges) > limit {
+		edges = edges[:limit]
+	}
+	out := make([]map[string]any, 0, len(edges))
+	for _, e := range edges {
+		out = append(out, map[string]any{
+			"kind":        e["kind"],
+			"source_name": e["source_name"],
+			"target_name": firstNonEmptyAny(e["target_qname"], e["target_name"]),
+			"source_file": e["source_file"],
+			"target_file": e["target_file"],
+			"line":        e["line"],
+		})
+	}
+	return out
+}
+
+func firstNonEmptyAny(values ...any) any {
+	for _, v := range values {
+		if fmt.Sprint(v) != "" && fmt.Sprint(v) != "<nil>" {
+			return v
+		}
+	}
+	return ""
+}
+
+func truncatedContext(payload map[string]any) bool {
+	for _, key := range []string{"entrypoints", "related", "relationships"} {
+		items, _ := payload[key].([]map[string]any)
+		count, _ := payload[key+"_count"].(int)
+		if count > len(items) {
+			return true
+		}
+	}
+	return false
+}
+
+func FormatContextSummaryMarkdown(payload map[string]any) string {
+	lines := []string{fmt.Sprintf("# Code Context Summary: %v", payload["task"]), "", "## Entrypoints"}
+	appendNodeLines := func(nodes []map[string]any) {
+		for _, n := range nodes {
+			lines = append(lines, fmt.Sprintf("- `%v` (%v) %v:%v", n["qualified_name"], n["kind"], n["file_path"], n["start_line"]))
+		}
+	}
+	if entrypoints, _ := payload["entrypoints"].([]map[string]any); len(entrypoints) > 0 {
+		appendNodeLines(entrypoints)
+	} else {
+		lines = append(lines, "- No matching symbols found.")
+	}
+	if related, _ := payload["related"].([]map[string]any); len(related) > 0 {
+		lines = append(lines, "", "## Related Symbols")
+		appendNodeLines(related)
+	}
+	if relationships, _ := payload["relationships"].([]map[string]any); len(relationships) > 0 {
+		lines = append(lines, "", "## Relationships")
+		for _, e := range relationships {
+			lines = append(lines, fmt.Sprintf("- `%v` -> `%v` (%v:%v)", e["source_name"], e["target_name"], e["source_file"], e["line"]))
+		}
+	}
+	if payload["truncated"] == true {
+		lines = append(lines, "", "_Output truncated; rerun without `--summary` for full context._")
 	}
 	return strings.TrimRight(strings.Join(lines, "\n"), "\n") + "\n"
 }

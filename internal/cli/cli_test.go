@@ -24,7 +24,7 @@ func TestTopLevelAndSubcommandHelp(t *testing.T) {
 	if err := Run([]string{"--help"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, cmd := range []string{"init", "uninit", "rm", "index", "sync", "unlock", "query", "files", "context", "affected", "impact", "status", "list", "info"} {
+	for _, cmd := range []string{"init", "uninit", "rm", "index", "sync", "unlock", "query", "files", "overview", "architecture", "context", "affected", "impact", "status", "list", "info"} {
 		if err := Run([]string{cmd, "--help"}); err != nil {
 			t.Fatalf("%s --help: %v", cmd, err)
 		}
@@ -46,6 +46,43 @@ func TestInitIndexQueryAndStale(t *testing.T) {
 	}
 	if err := Run([]string{"index", "--path", project, "--quiet"}); err != nil {
 		t.Fatal(err)
+	}
+	if err := Run([]string{"--json", "overview", "--path", project}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run([]string{"--json", "context", "--path", project, "--summary", "helper"}); err != nil {
+		t.Fatal(err)
+	}
+	protected := captureStdout(t, func() {
+		if err := Run([]string{"--json", "context", "--path", project, "--max-json-bytes", "1", "helper"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	var protectedPayload map[string]any
+	if err := json.Unmarshal([]byte(protected), &protectedPayload); err != nil {
+		t.Fatalf("invalid protected json %q: %v", protected, err)
+	}
+	output := protectedPayload["output"].(map[string]any)
+	if output["truncated"] != true {
+		t.Fatalf("expected large-output protection, got %#v", output)
+	}
+	if _, ok := protectedPayload["code_blocks"]; ok {
+		t.Fatalf("protected context should omit code_blocks: %#v", protectedPayload)
+	}
+	full := captureStdout(t, func() {
+		if err := Run([]string{"--json", "context", "--path", project, "--max-json-bytes", "1", "--allow-large", "helper"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	var fullPayload map[string]any
+	if err := json.Unmarshal([]byte(full), &fullPayload); err != nil {
+		t.Fatalf("invalid full json %q: %v", full, err)
+	}
+	if _, ok := fullPayload["output"]; ok {
+		t.Fatalf("allow-large should not add output protection metadata: %#v", fullPayload["output"])
+	}
+	if _, ok := fullPayload["code_blocks"]; !ok {
+		t.Fatalf("allow-large should preserve code_blocks: %#v", fullPayload)
 	}
 	future := time.Now().Add(5 * time.Second)
 	if err := os.Chtimes(source, future, future); err != nil {
@@ -83,6 +120,32 @@ func TestRmAndUninitRequireConfirmation(t *testing.T) {
 	})
 	if err := Run([]string{"rm", "demo", "--purge", "-y"}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestUnknownFlagHints(t *testing.T) {
+	err := Run([]string{"query", "--target", "demo", "Service"})
+	if err == nil {
+		t.Fatal("expected unknown --target error")
+	}
+	if !strings.Contains(err.Error(), "--target is global") || !strings.Contains(err.Error(), "--path /path/to/project") {
+		t.Fatalf("unexpected --target hint: %v", err)
+	}
+
+	err = Run([]string{"rm", "--path", "/tmp/project", "demo"})
+	if err == nil {
+		t.Fatal("expected unknown --path error")
+	}
+	if !strings.Contains(err.Error(), "does not accept --path") || !strings.Contains(err.Error(), "--target /path/to/project") {
+		t.Fatalf("unexpected --path hint: %v", err)
+	}
+
+	err = Run([]string{"query", "--limt", "3", "Service"})
+	if err == nil {
+		t.Fatal("expected typo flag error")
+	}
+	if !strings.Contains(err.Error(), "did you mean `--limit`") {
+		t.Fatalf("unexpected typo hint: %v", err)
 	}
 }
 

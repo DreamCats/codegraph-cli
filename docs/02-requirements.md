@@ -8,6 +8,7 @@
 - Support incremental indexing by content hash.
 - Resolve call edges across same file, imports, Go packages, Go modules, and simple TS/JS path aliases.
 - Provide human and JSON output for all core commands.
+- Provide project-level architecture overview and compact task context for agent workflows.
 - Warn when read commands see stale indexes.
 
 ## Non-Functional
@@ -23,7 +24,8 @@
 go test ./...
 go build ./...
 codegraph init --path <project> --index
+codegraph --json overview --path <project>
 codegraph --json query <symbol>
-codegraph --json context "task"
+codegraph --json context "task" --summary
 codegraph --json affected <file>
 ```

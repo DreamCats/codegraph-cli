@@ -153,10 +153,15 @@ func firstErrors(in []string) []string {
 }
 
 func cmdSync(cfg appConfig, args []string) error {
-	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help") {
-		fmt.Print(commandHelp("sync"))
+	fs := newFlagSet("sync")
+	pathOpt := fs.String("path", "", "project path")
+	if parseHelp(fs, args) {
 		return nil
 	}
+	if err := parseFlagArgs(fs, args); err != nil {
+		return err
+	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	root, name, entry, err := resolveProject(cfg, false)
 	if err != nil {
 		return err
@@ -248,10 +253,15 @@ func humanSize(n int64) string {
 }
 
 func cmdInfo(cfg appConfig, args []string) error {
-	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help") {
-		fmt.Print(commandHelp("info"))
+	fs := newFlagSet("info")
+	pathOpt := fs.String("path", "", "project path")
+	if parseHelp(fs, args) {
 		return nil
 	}
+	if err := parseFlagArgs(fs, args); err != nil {
+		return err
+	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	root, name, entry, err := resolveProject(cfg, false)
 	if err != nil {
 		return err
@@ -263,6 +273,7 @@ func cmdInfo(cfg appConfig, args []string) error {
 
 func cmdUninit(cfg appConfig, args []string) error {
 	fs := newFlagSet("uninit")
+	pathOpt := fs.String("path", "", "project path")
 	yes := fs.Bool("y", false, "yes")
 	if parseHelp(fs, args) {
 		return nil
@@ -270,6 +281,7 @@ func cmdUninit(cfg appConfig, args []string) error {
 	if err := parseFlagArgs(fs, args); err != nil {
 		return err
 	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	root, name, entry, err := resolveProject(cfg, false)
 	if err != nil {
 		return err

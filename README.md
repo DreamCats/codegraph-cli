@@ -13,8 +13,9 @@ Go rewrite of the local codegraph CLI. It keeps the Python reference repo's CLI 
 | `files [--glob ...]` | done | indexed files |
 | `status` | done | counts by kind/language |
 | `resolve` | done | rerun call edge resolver |
+| `overview / architecture` | done | project-level package graph, core symbols, storage summary |
 | `callers / callees / impact` | done | resolved call graph queries |
-| `context` | done | entrypoints, related symbols, relationships, snippets |
+| `context [--summary] [--allow-large]` | done | entrypoints, related symbols, relationships, snippets or compact summary |
 | `affected` | done | reverse call graph to affected tests |
 | `unlock` | stub | no lock backend yet |
 
@@ -32,17 +33,29 @@ go install github.com/DreamCats/codegraph-cli/cmd/codegraph@latest
 cd /path/to/project
 codegraph init --index
 codegraph status
+codegraph overview
 codegraph query Service --kind class
 codegraph context "fix login bug"
+codegraph context "fix login bug" --summary
 codegraph affected src/foo.py
 ```
 
 Agent-friendly JSON:
 
 ```bash
+codegraph --json overview
 codegraph --json query Service
 codegraph --json status
-codegraph --json context "fix login bug"
+codegraph --json context "fix login bug" --summary
+```
+
+Large `context --json` payloads are compacted automatically above the default `--max-json-bytes` threshold. Use `--allow-large` or `--max-json-bytes 0` when full JSON is required.
+
+Most read commands accept either global target selection or a subcommand `--path`:
+
+```bash
+codegraph --target /path/to/project overview
+codegraph overview --path /path/to/project
 ```
 
 ## Storage

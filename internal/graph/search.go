@@ -1,24 +1,49 @@
 package graph
 
 import (
-	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"database/sql"
 	"fmt"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"path/filepath"
 	"sort"
 	"strings"
 )
 
 func Search(store, query, kind string, limit int) ([]map[string]any, error) {
+	if limit <= 0 {
+		limit = 20
+	}
 	db, err := storepkg.Open(store)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
-	if rows, err := searchFTS(db, query, kind, limit); err == nil && len(rows) > 0 {
+	candidateLimit := expandedSearchLimit(limit)
+	if rows, err := searchFTS(db, query, kind, candidateLimit); err == nil && len(rows) > 0 {
+		if len(rows) > limit {
+			rows = rows[:limit]
+		}
 		return rows, nil
 	}
-	return searchLike(db, query, kind, limit)
+	rows, err := searchLike(db, query, kind, candidateLimit)
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+	return rows, err
+}
+
+func expandedSearchLimit(limit int) int {
+	if limit <= 0 {
+		return 20
+	}
+	n := limit * 5
+	if n < 50 {
+		return 50
+	}
+	if n > 200 {
+		return 200
+	}
+	return n
 }
 
 func searchFTS(db *sql.DB, query, kind string, limit int) ([]map[string]any, error) {
@@ -28,6 +53,8 @@ func searchFTS(db *sql.DB, query, kind string, limit int) ([]map[string]any, err
 	}
 	q := `SELECT n.id,n.kind,n.name,n.qualified_name,n.file_path,n.language,
 		n.start_line,n.end_line,n.signature,n.docstring,n.is_exported,
+		(SELECT COUNT(*) FROM edges WHERE source = n.id AND resolved = 1) AS out_degree,
+		(SELECT COUNT(*) FROM edges WHERE target = n.id AND resolved = 1) AS in_degree,
 		abs(bm25(nodes_fts, 0, 20, 5, 1, 2)) AS score
 		FROM nodes_fts JOIN nodes n ON nodes_fts.id = n.id
 		WHERE nodes_fts MATCH ?`
@@ -52,9 +79,6 @@ func searchFTS(db *sql.DB, query, kind string, limit int) ([]map[string]any, err
 		}
 	}
 	rankRows(out, query)
-	if len(out) > limit {
-		out = out[:limit]
-	}
 	return out, rows.Err()
 }
 
@@ -74,7 +98,10 @@ func searchLike(db *sql.DB, query, kind string, limit int) ([]map[string]any, er
 	like := "%" + query + "%"
 	lower := "%" + strings.ToLower(query) + "%"
 	q := `SELECT id,kind,name,qualified_name,file_path,language,start_line,end_line,
-		signature,docstring,is_exported FROM nodes
+		signature,docstring,is_exported,
+		(SELECT COUNT(*) FROM edges WHERE source = nodes.id AND resolved = 1) AS out_degree,
+		(SELECT COUNT(*) FROM edges WHERE target = nodes.id AND resolved = 1) AS in_degree
+		FROM nodes
 		WHERE (name LIKE ? OR qualified_name LIKE ? OR lower(name) LIKE ? OR lower(docstring) LIKE ? OR lower(signature) LIKE ?)`
 	args := []any{like, like, lower, lower, lower}
 	if kind != "" {
@@ -104,17 +131,19 @@ func scanNodeSearch(rows *sql.Rows, withScore bool) (map[string]any, error) {
 	var start, end int
 	var sig, doc sql.NullString
 	var exported int
+	var outDegree, inDegree int
 	var score sql.NullFloat64
 	var err error
 	if withScore {
-		err = rows.Scan(&id, &kind, &name, &qn, &fp, &lang, &start, &end, &sig, &doc, &exported, &score)
+		err = rows.Scan(&id, &kind, &name, &qn, &fp, &lang, &start, &end, &sig, &doc, &exported, &outDegree, &inDegree, &score)
 	} else {
-		err = rows.Scan(&id, &kind, &name, &qn, &fp, &lang, &start, &end, &sig, &doc, &exported)
+		err = rows.Scan(&id, &kind, &name, &qn, &fp, &lang, &start, &end, &sig, &doc, &exported, &outDegree, &inDegree)
 	}
 	m := map[string]any{
 		"id": id, "kind": kind, "name": name, "qualified_name": qn,
 		"file_path": fp, "language": lang, "start_line": start,
-		"end_line": end, "is_exported": exported,
+		"end_line": end, "is_exported": exported, "out_degree": outDegree,
+		"in_degree": inDegree, "degree": inDegree + outDegree,
 	}
 	if sig.Valid {
 		m["signature"] = sig.String
@@ -155,6 +184,7 @@ func rankRows(rows []map[string]any, query string) {
 		case "import":
 			score -= 40
 		}
+		score += graphImportanceScore(r)
 		r["rank"] = score
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
@@ -165,6 +195,37 @@ func rankRows(rows []map[string]any, query string) {
 		}
 		return ri > rj
 	})
+}
+
+func graphImportanceScore(row map[string]any) float64 {
+	degree := asInt(row["degree"])
+	inDegree := asInt(row["in_degree"])
+	outDegree := asInt(row["out_degree"])
+	score := float64(minInt(degree, 40)) * 1.5
+	score += float64(minInt(inDegree, 20))
+	score += float64(minInt(outDegree, 20)) * 0.5
+	if asInt(row["is_exported"]) == 1 {
+		score += 6
+	}
+	file := fmt.Sprint(row["file_path"])
+	name := fmt.Sprint(row["name"])
+	if strings.HasPrefix(file, "cmd/") || strings.HasPrefix(file, "internal/cli/") {
+		score += 4
+	}
+	if name == "Run" || name == "Main" || strings.HasPrefix(name, "cmd") {
+		score += 3
+	}
+	if strings.HasSuffix(file, "_test.go") {
+		score -= 12
+	}
+	return score
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func ListFiles(store string, patterns []string) ([]map[string]any, error) {

@@ -1,17 +1,22 @@
 package cli
 
 import (
+	"fmt"
 	"github.com/DreamCats/codegraph-cli/internal/config"
 	graphpkg "github.com/DreamCats/codegraph-cli/internal/graph"
-	"fmt"
 	"strings"
 )
 
 func cmdStatus(cfg appConfig, args []string) error {
-	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help") {
-		fmt.Print(commandHelp("status"))
+	fs := newFlagSet("status")
+	pathOpt := fs.String("path", "", "project path")
+	if parseHelp(fs, args) {
 		return nil
 	}
+	if err := parseFlagArgs(fs, args); err != nil {
+		return err
+	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	root, name, entry, err := resolveProject(cfg, false)
 	if err != nil {
 		return err
@@ -37,6 +42,7 @@ func cmdStatus(cfg appConfig, args []string) error {
 
 func cmdQuery(cfg appConfig, args []string) error {
 	fs := newFlagSet("query")
+	pathOpt := fs.String("path", "", "project path")
 	limit := fs.Int("limit", 20, "limit")
 	kind := fs.String("kind", "", "kind")
 	if parseHelp(fs, args) {
@@ -48,6 +54,7 @@ func cmdQuery(cfg appConfig, args []string) error {
 	if fs.NArg() < 1 {
 		return fmt.Errorf("missing search term")
 	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	term := fs.Arg(0)
 	root, name, entry, err := resolveProject(cfg, false)
 	if err != nil {
@@ -92,6 +99,7 @@ func nilIfEmpty(s string) any {
 
 func cmdFiles(cfg appConfig, args []string) error {
 	fs := newFlagSet("files")
+	pathOpt := fs.String("path", "", "project path")
 	var globs multiFlag
 	fs.Var(&globs, "glob", "glob")
 	if parseHelp(fs, args) {
@@ -100,6 +108,7 @@ func cmdFiles(cfg appConfig, args []string) error {
 	if err := parseFlagArgs(fs, args); err != nil {
 		return err
 	}
+	cfg = withPathTarget(cfg, *pathOpt)
 	root, name, entry, err := resolveProject(cfg, false)
 	if err != nil {
 		return err
@@ -122,6 +131,38 @@ func cmdFiles(cfg appConfig, args []string) error {
 		lines = append(lines, fmt.Sprintf("%-10v %6v nodes  %v", f["language"], f["node_count"], f["path"]))
 	}
 	fmt.Println(strings.Join(lines, "\n") + staleHintText(stale))
+	return nil
+}
+
+func cmdOverview(cfg appConfig, args []string) error {
+	fs := newFlagSet("overview")
+	pathOpt := fs.String("path", "", "project path")
+	packageLimit := fs.Int("packages", 20, "package limit")
+	symbolLimit := fs.Int("symbols", 12, "core symbol limit")
+	dependencyLimit := fs.Int("dependencies", 20, "dependency limit")
+	if parseHelp(fs, args) {
+		return nil
+	}
+	if err := parseFlagArgs(fs, args); err != nil {
+		return err
+	}
+	cfg = withPathTarget(cfg, *pathOpt)
+	root, name, entry, err := resolveProject(cfg, false)
+	if err != nil {
+		return err
+	}
+	store := config.StoreDirFor(entry.Key)
+	payload, err := graphpkg.Overview(store, *packageLimit, *symbolLimit, *dependencyLimit)
+	if err != nil {
+		return err
+	}
+	payload["project"] = name
+	payload["root"] = root
+	stale := graphpkg.AttachStale(payload, root, store)
+	if cfg.JSON {
+		return emit(cfg, payload, "")
+	}
+	fmt.Print(graphpkg.FormatOverviewMarkdown(payload) + staleHintText(stale))
 	return nil
 }
 

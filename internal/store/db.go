@@ -1,8 +1,8 @@
 package store
 
 import (
-	"github.com/DreamCats/codegraph-cli/internal/model"
 	"database/sql"
+	"github.com/DreamCats/codegraph-cli/internal/model"
 	"os"
 	"path/filepath"
 	"time"

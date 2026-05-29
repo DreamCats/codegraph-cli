@@ -37,3 +37,10 @@ func firstNonEmpty(a, b string) string {
 	}
 	return b
 }
+
+func withPathTarget(cfg appConfig, path string) appConfig {
+	if path != "" {
+		cfg.Target = config.Abs(path)
+	}
+	return cfg
+}

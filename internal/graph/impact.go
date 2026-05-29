@@ -1,10 +1,10 @@
 package graph
 
 import (
-	"github.com/DreamCats/codegraph-cli/internal/resolver"
-	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"database/sql"
 	"fmt"
+	"github.com/DreamCats/codegraph-cli/internal/resolver"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"regexp"
 	"sort"
 	"strings"

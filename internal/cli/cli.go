@@ -105,6 +105,8 @@ func runCommand(cfg appConfig, cmd string, args []string) error {
 		return cmdAffected(cfg, args)
 	case "context":
 		return cmdContext(cfg, args)
+	case "overview", "architecture":
+		return cmdOverview(cfg, args)
 	default:
 		return fmt.Errorf("unknown command: %s", cmd)
 	}
@@ -137,6 +139,7 @@ Commands:
   unlock    清理锁（当前为 no-op）
   query     搜索符号
   files     列出索引文件
+  overview  项目级知识图谱概览
   context   为任务构造上下文
   affected  查找受影响测试
   impact    符号影响半径
@@ -193,8 +196,7 @@ func parseFlagArgs(fs *flag.FlagSet, args []string) error {
 		}
 		f := fs.Lookup(name)
 		if f == nil {
-			flags = append(flags, arg)
-			continue
+			return unknownFlagError(fs, arg)
 		}
 		flags = append(flags, arg)
 		if strings.Contains(arg, "=") || isBoolFlag(f) {
@@ -207,6 +209,79 @@ func parseFlagArgs(fs *flag.FlagSet, args []string) error {
 		flags = append(flags, args[i])
 	}
 	return fs.Parse(append(flags, positionals...))
+}
+
+func unknownFlagError(fs *flag.FlagSet, arg string) error {
+	name := strings.TrimLeft(arg, "-")
+	if eq := strings.Index(name, "="); eq >= 0 {
+		name = name[:eq]
+	}
+	lines := []string{fmt.Sprintf("unknown flag %s for command %q", arg, fs.Name())}
+	if name == "target" {
+		lines = append(lines, "hint: --target is global; place it before the command, e.g. `codegraph --target NAME_OR_PATH "+fs.Name()+" ...`.")
+		if fs.Lookup("path") != nil {
+			lines = append(lines, "hint: when you have a project path, this command also accepts `--path /path/to/project`.")
+		}
+		return fmt.Errorf(strings.Join(lines, "\n"))
+	}
+	if name == "path" {
+		lines = append(lines, "hint: this command does not accept --path; use global `--target /path/to/project` before the command.")
+		return fmt.Errorf(strings.Join(lines, "\n"))
+	}
+	if suggestion := similarFlag(fs, name); suggestion != "" {
+		lines = append(lines, "hint: did you mean `--"+suggestion+"`?")
+	}
+	lines = append(lines, "hint: run `codegraph "+fs.Name()+" --help` for supported options.")
+	return fmt.Errorf(strings.Join(lines, "\n"))
+}
+
+func similarFlag(fs *flag.FlagSet, name string) string {
+	best := ""
+	bestDist := 100
+	fs.VisitAll(func(f *flag.Flag) {
+		d := levenshtein(name, f.Name)
+		if d < bestDist {
+			best = f.Name
+			bestDist = d
+		}
+	})
+	if bestDist <= 2 {
+		return best
+	}
+	return ""
+}
+
+func levenshtein(a, b string) int {
+	prev := make([]int, len(b)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(a); i++ {
+		cur := make([]int, len(b)+1)
+		cur[0] = i
+		for j := 1; j <= len(b); j++ {
+			cost := 0
+			if a[i-1] != b[j-1] {
+				cost = 1
+			}
+			cur[j] = min3(cur[j-1]+1, prev[j]+1, prev[j-1]+cost)
+		}
+		prev = cur
+	}
+	return prev[len(b)]
+}
+
+func min3(a, b, c int) int {
+	if a < b {
+		if a < c {
+			return a
+		}
+		return c
+	}
+	if b < c {
+		return b
+	}
+	return c
 }
 
 func isBoolFlag(f *flag.Flag) bool {

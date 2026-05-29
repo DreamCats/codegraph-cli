@@ -1,8 +1,8 @@
 package store_test
 
 import (
-	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"database/sql"
+	storepkg "github.com/DreamCats/codegraph-cli/internal/store"
 	"testing"
 
 	_ "modernc.org/sqlite"
